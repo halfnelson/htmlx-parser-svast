@@ -1,16 +1,39 @@
-import { SvelteParser, SvelteLexer } from './parser';
-
-let parser = new SvelteParser();
-
-function parseInput(text: string) {
-    const lexingResult = SvelteLexer.tokenize(text);
-    parser.input = lexingResult.tokens;
-    let result = parser.tag_children();
-
-    console.log("Errors", JSON.stringify(parser.errors, null, 2));
-    return result;
-}
+import { parseSvelte, parser } from './parser';
+import CodeMirror from 'codemirror'
+import 'codemirror/lib/codemirror.css'
+import 'codemirror/mode/javascript/javascript'
+import 'codemirror/mode/htmlmixed/htmlmixed'
+import { createSyntaxDiagramsCode } from 'chevrotain';
 
 const inputText = "<svelte:self component|preventDefault={hi} component2='{hi}' booleanattr />"
-const result = parseInput(inputText);
-console.log(JSON.stringify(result, (k,v) => (['tokenTypeIdx', 'tokenType', 'startLine', 'endLine', 'startColumn','endColumn'].indexOf(k) >= 0 ? undefined : v), 2));
+
+function main() {
+    
+    var inputEditor = CodeMirror(document.getElementById('inputEditor') as HTMLDivElement, {
+        value: inputText,
+        mode: "htmlmixed",
+        lineNumbers: true,
+    });
+    inputEditor.setSize("calc(100% - 2px)", "calc(100% - 2px)");
+        
+    var outputEditor = CodeMirror(document.getElementById('outputEditor') as HTMLDivElement, {
+        value: '',
+        mode: {name: "javascript", json: true},
+        lineNumbers: true,
+    });
+    outputEditor.setSize("calc(100% - 2px)", "calc(100% - 2px)");
+    
+    const result = parseSvelte(inputText);
+
+    const htmlText = createSyntaxDiagramsCode(parser.getSerializedGastProductions());
+    console.log(htmlText);
+    (document.getElementById("innerFrame") as HTMLIFrameElement).src = 'data:text/html;charset=utf-8,' + encodeURI(htmlText);
+
+    const resultJson = JSON.stringify(result, (k, v) => (['tokenTypeIdx', 'tokenType', 'startLine', 'endLine', 'startColumn', 'endColumn'].indexOf(k) >= 0 ? undefined : v), 2);
+    outputEditor.setValue(resultJson);
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+    main();
+});
+

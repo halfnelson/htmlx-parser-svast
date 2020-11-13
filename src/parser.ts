@@ -1,81 +1,9 @@
-import { createToken, CstParser, Lexer } from 'chevrotain'
-// ----------------- Lexer -----------------
-const LAngle = createToken({ name: "LAngle", pattern: /</, push_mode: "tag_mode" });
-const RAngle = createToken({ name: "RAngle", pattern: />/, pop_mode: true });
-
-const Colon = createToken({ name: "Colon", pattern: /:/ });
-const Equal = createToken({ name: "Equal", pattern: /=/ });
-const Pipe = createToken({ name: "Pipe", pattern: /\|/ });
-
-const DQuote = createToken({ name: "DQuote", pattern: /"/, push_mode: "dquote_str_mode" });
-const DQuotedString = createToken({ name: "DQuoteString", pattern: /(?:\\"|[^"\{])+/ });
-const DQuoteEnd = createToken({ name: "DQuoteEnd", pattern: /"/, pop_mode: true });
-
-const SQuote = createToken({ name: "SQuote", pattern: /'/, push_mode: "squote_str_mode" });
-const SQuotedString = createToken({ name: "SQuoteString", pattern: /(?:\\'|[^'\{])+/ });
-const SQuoteEnd = createToken({ name: "SQuoteEnd", pattern: /'/, pop_mode: true });
-
-const Slash = createToken({ name: "Slash", pattern: /\// });
-
-const OpenTag = createToken({ name: "OpenTag", pattern: /<[a-zA-Z0-9:]+/, push_mode: "tag_mode" });
-const CloseTag = createToken({ name: "CloseTag", pattern: /<\/[a-zA-Z0-9:]+/, push_mode: "tag_mode" });
-const AttrText = createToken({ name: "AttrText", pattern: /[^\s"'=<>`{\|\/]+/ });
-
-const LCurly = createToken({ name: "LCurly", pattern: /\{/, push_mode: "expr_mode" });
-const ExprContent = createToken({ name: "ExprContent", pattern: /(\{.*?\}|[^}])+/ });
-const RCurly = createToken({ name: "RCurly", pattern: /\}/, pop_mode: true });
-
-const TagContent = createToken({ name: "TagContent", pattern: /[^<{]+/ });
-
-const WhiteSpace = createToken({
-    name: "WhiteSpace",
-    pattern: /\s+/
-});
+import { CstParser } from "chevrotain";
+import { AttrText, CloseTag, DQuote, DQuotedString, DQuoteEnd, Equal, ExprContent, LCurly, 
+         OpenTag, Pipe, RAngle, RCurly, Slash, SQuote, SQuotedString, 
+         SQuoteEnd, SvelteLexer, svelteTokens, TagContent, WhiteSpace } from "./lexer";
 
 
-const svelteTokens = [LAngle, RAngle, Colon, DQuote, DQuotedString, DQuoteEnd,
-    SQuote, SQuotedString, SQuoteEnd,
-    Slash, OpenTag, CloseTag, AttrText,
-    LCurly, ExprContent, TagContent, RCurly, WhiteSpace
-]
-
-export const SvelteLexer = new Lexer({
-    defaultMode: "content_mode",
-    modes: {
-        content_mode: [
-            TagContent,
-            LCurly,
-            OpenTag,
-            CloseTag
-        ],
-        tag_mode: [
-            Slash,
-            Colon,
-            RAngle,
-            Equal,
-            Pipe,
-            LCurly,
-            DQuote,
-            SQuote,
-            WhiteSpace,
-            AttrText
-        ],
-        expr_mode: [
-            ExprContent,
-            RCurly,
-        ],
-        squote_str_mode: [
-            LCurly,
-            SQuotedString,
-            SQuoteEnd
-        ],
-        dquote_str_mode: [
-            LCurly,
-            DQuotedString,
-            DQuoteEnd,
-        ],
-    }
-});
 
 // ----------------- parser -----------------
 export class SvelteParser extends CstParser {
@@ -195,3 +123,16 @@ export class SvelteParser extends CstParser {
     })
 }
 
+export let parser: SvelteParser;
+
+export function parseSvelte(text: string) {
+    const lexingResult = SvelteLexer.tokenize(text);
+    // reuse the instance
+    parser = parser ?? new SvelteParser();
+
+    parser.input = lexingResult.tokens;
+    let result = parser.tag_children();
+
+    console.log("Errors", JSON.stringify(parser.errors, null, 2));
+    return result;
+}
