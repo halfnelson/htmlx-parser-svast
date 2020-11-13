@@ -5,17 +5,17 @@ import 'codemirror/mode/javascript/javascript'
 import 'codemirror/mode/htmlmixed/htmlmixed'
 import { createSyntaxDiagramsCode } from 'chevrotain';
 
-const inputText = "<svelte:self component|preventDefault={hi} component2='{hi}' booleanattr />"
 
 function main() {
     
     var inputEditor = CodeMirror(document.getElementById('inputEditor') as HTMLDivElement, {
-        value: inputText,
+        value: '',
         mode: "htmlmixed",
         lineNumbers: true,
     });
     inputEditor.setSize("calc(100% - 2px)", "calc(100% - 2px)");
-        
+    
+
     var outputEditor = CodeMirror(document.getElementById('outputEditor') as HTMLDivElement, {
         value: '',
         mode: {name: "javascript", json: true},
@@ -23,14 +23,18 @@ function main() {
     });
     outputEditor.setSize("calc(100% - 2px)", "calc(100% - 2px)");
     
-    const result = parseSvelte(inputText);
+    inputEditor.on("change", ()=> {
+        const value =  inputEditor.getValue()
+        const result = parseSvelte(value);
+        const resultJson = JSON.stringify(result, (k, v) => (['tokenTypeIdx', 'tokenType', 'startLine', 'endLine', 'startColumn', 'endColumn'].indexOf(k) >= 0 ? undefined : v), 2);
+        outputEditor.setValue(resultJson);
+    })
 
+    inputEditor.setValue('<h1>Hello {name}! </h1>')
+    //do at least one parse to init the grammer
+    parseSvelte('');
     const htmlText = createSyntaxDiagramsCode(parser.getSerializedGastProductions());
-    console.log(htmlText);
     (document.getElementById("innerFrame") as HTMLIFrameElement).src = 'data:text/html;charset=utf-8,' + encodeURI(htmlText);
-
-    const resultJson = JSON.stringify(result, (k, v) => (['tokenTypeIdx', 'tokenType', 'startLine', 'endLine', 'startColumn', 'endColumn'].indexOf(k) >= 0 ? undefined : v), 2);
-    outputEditor.setValue(resultJson);
 }
 
 document.addEventListener("DOMContentLoaded", function(){
