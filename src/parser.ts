@@ -63,15 +63,19 @@ export class SvelteParser extends CstParser {
     })
 
     branch_block = this.RULE("branch_block", () => {
+        this.SUBRULE(this.start_branch)
+        this.MANY(() => this.SUBRULE(this.branch))
+        this.CONSUME(LCurly)
+        this.CONSUME(BranchBlockEnd)
+        this.CONSUME(RCurly)
+    })
+
+    start_branch = this.RULE("start_branch", () => {
         this.CONSUME(LCurly)
         this.CONSUME(BranchBlockOpen)
         this.OPTION(() => this.CONSUME(ExprContent))
         this.CONSUME(RCurly)
         this.OPTION2(() => this.SUBRULE(this.tag_content))
-        this.MANY(() => this.SUBRULE(this.branch))
-        this.CONSUME2(LCurly)
-        this.CONSUME(BranchBlockEnd)
-        this.CONSUME2(RCurly)
     })
 
     branch = this.RULE("branch", () => {
