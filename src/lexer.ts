@@ -23,10 +23,14 @@ export const CloseTag = createToken({ name: "CloseTag", pattern: /<\/[a-zA-Z0-9:
 export const AttrText = createToken({ name: "AttrText", pattern: /[^\s"'=<>`{\|\/]+/ });
 
 export const LCurly = createToken({ name: "LCurly", pattern: /\{/, push_mode: "expr_mode" });
-export const ExprContent = createToken({ name: "ExprContent", pattern: /(\{.*?\}|[^}])+/ });
+export const ExprContent = createToken({ name: "ExprContent", pattern: /[^\}\@\:\/\x23](\{.*?\}|[^\}])*/ });
+export const VoidBlock = createToken({ name: "VoidBlock", pattern: /\@[^\s\}]+/ });
+export const BranchBlockOpen = createToken({ name: "BranchBlockOpen", pattern: /\x23[^\s\}]+/  });
+export const BranchBlockContinue = createToken({ name: "BranchBlockContinue", pattern: /\:[^\s\}]+/ });
+export const BranchBlockEnd = createToken({ name: "BranchBlockEnd", pattern: /\/[^\s\}]+/ });
 export const RCurly = createToken({ name: "RCurly", pattern: /\}/, pop_mode: true });
 
-export const TagContent = createToken({ name: "TagContent", pattern: /[^<{]+/ });
+export const TagContent = createToken({ name: "TagContent", pattern: /[^<\{]+/ });
 
 export const WhiteSpace = createToken({
     name: "WhiteSpace",
@@ -37,7 +41,8 @@ export const WhiteSpace = createToken({
 export const svelteTokens = [LAngle, RAngle, Colon, DQuote, DQuotedString, DQuoteEnd,
     SQuote, SQuotedString, SQuoteEnd,
     Slash, OpenTag, CloseTag, AttrText,
-    LCurly, ExprContent, TagContent, RCurly, WhiteSpace
+    LCurly, ExprContent, TagContent, RCurly, WhiteSpace,
+    VoidBlock, BranchBlockOpen, BranchBlockContinue, BranchBlockEnd
 ]
 
 export const SvelteLexer = new Lexer({
@@ -62,6 +67,10 @@ export const SvelteLexer = new Lexer({
             AttrText
         ],
         expr_mode: [
+            VoidBlock,
+            BranchBlockOpen,
+            BranchBlockContinue,
+            BranchBlockEnd,
             ExprContent,
             RCurly,
         ],

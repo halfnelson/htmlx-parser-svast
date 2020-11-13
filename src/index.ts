@@ -32,7 +32,7 @@ function main() {
 
     inputEditor.setValue('<h1>Hello {name}! </h1>')
     //do at least one parse to init the grammer
-    parseSvelte('');
+    parseSvelte('<h1>Hello {name}! </h1>');
     const htmlText = createSyntaxDiagramsCode(parser.getSerializedGastProductions());
     (document.getElementById("innerFrame") as HTMLIFrameElement).src = 'data:text/html;charset=utf-8,' + encodeURI(htmlText);
 }
