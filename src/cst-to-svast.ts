@@ -1,5 +1,5 @@
-import { CstChildrenDictionary, CstElement, CstNode, IToken, ITokenConfig } from 'chevrotain';
-import { BranchingBlock, Root, SvelteComponent, SvelteElement, SvelteExpression, VoidBlock, Text, SvelteMeta, Property, Directive, Branch, Literal } from 'svast'
+import { CstChildrenDictionary, CstElement, CstNode, CstNodeLocation, IToken, ITokenConfig } from 'chevrotain';
+import { BranchingBlock, Root, SvelteComponent, SvelteElement, SvelteExpression, VoidBlock, Text, SvelteMeta, Property, Directive, Branch, Literal, Point, Position, Node } from 'svast'
 
 import { HtmlxParser } from './parser';
 
@@ -11,14 +11,47 @@ const BaseHtmlxLVisitor = parserInstance.getBaseCstVisitorConstructor()
 function textNode(value: IToken): Text {
     return {
         type: "text",
-        value: value.image
+        value: value.image,
+        position: pos(from_start(value), from_end(value, 1))
     }
 }
 
 function expressionNode(value: IToken): SvelteExpression {
     return {
         type: "svelteExpression",
-        value: value.image
+        value: value.image,
+        position: pos(from_start(value), from_end(value, 1))
+    }
+}
+
+function offset_col(p: Point, col_offset: number) {
+    return {
+        offset: p.offset + col_offset,
+        column: p.column + col_offset,
+        line: p.line
+    }
+}
+
+function from_start(node: CstNodeLocation | IToken, col_offset: number = 0): Point {
+    return {
+        offset: node.startOffset + col_offset,
+        column: node.startColumn + col_offset,
+        line: node.startLine
+    }
+}
+
+function from_end(node: CstNodeLocation | IToken, col_offset: number = 0): Point {
+    return {
+        offset: node.endOffset + col_offset,
+        column: node.endColumn + col_offset,
+        line: node.endLine
+    }
+}
+
+function pos(start: Point, end: Point): Position {
+    return {
+        start: start,
+        end: end
     }
 }
 
@@ -34,9 +67,13 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
 
     // root := tag_content
     root(n: CstChildrenDictionary): Root {
+        const children = this.visit(n.tag_content[0] as CstNode)
         return { 
             type: "root",
-            children: this.visit(n.tag_content[0] as CstNode)
+            children: children,
+            position: children.length == 0 
+                ? pos({column: 0, line: 0, offset: 0}, {column: 0, line: 0, offset: 0}) 
+                : pos(children[0].position.start, children[children.length - 1].position.end)
         } 
     }
 
@@ -69,6 +106,14 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         el.selfClosing = !!n.Slash;
         el.properties = this.visit(n.attribute_list[0] as CstNode)
         el.children = n.tag_content ?  this.visit(n.tag_content[0] as CstNode) : []
+
+        if (el.selfClosing) {
+            el.position = pos(from_start(n.OpenTag[0] as IToken), from_end(n.RAngle[0] as IToken))
+        } else {
+            const closeTag = this.visit(n.closetag[0] as CstNode) as Node;
+            el.position = pos(from_start(n.OpenTag[0] as IToken), closeTag.position.end);
+        }
+       
         return el as TagType
     }
 
@@ -125,7 +170,8 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
                 value: [expr],
                 shorthand: "expression",
                 modifiers: [],
-                name: expr.value.trim()
+                name: expr.value.trim(),
+                position: expr.position
             } as Property
         }
     }
@@ -133,6 +179,12 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
     attribute(n: CstChildrenDictionary): (Property | Directive) {
         const name = (n.AttrText[0] as IToken).image;
         const colonIndex = name.indexOf(':');
+        const values = n.quoted_attribute_value ? this.visit(n.quoted_attribute_value[0] as CstNode) : []
+
+        const hasQuotes = !(n.quoted_attribute_value?.[0] as CstNode).children.unquoted_value
+        const startPosition = from_start(n.AttrText[0] as IToken)
+        const endPosition = n.Equal ? offset_col((values[values.length - 1] as Node).position?.end, hasQuotes ? 1 : 0) : from_end(n.AttrText[0] as IToken, 1);
+        
         if (colonIndex >= 0) {
             return {
                 type: "svelteDirective",
@@ -140,7 +192,8 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
                 specifier: name.substr(colonIndex+1),
                 shorthand: "none",
                 modifiers: this.visit(n.modifier_list[0] as CstNode),
-                value: n.quoted_attribute_value ? this.visit(n.quoted_attribute_value[0] as CstNode) : []
+                value: n.quoted_attribute_value ? this.visit(n.quoted_attribute_value[0] as CstNode) : [],
+                position: pos(startPosition, endPosition)
             }
         } else {
             return {
@@ -148,7 +201,8 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
                 name: name,
                 shorthand: n.quoted_attribute_value ? "none" : "boolean",
                 modifiers: this.visit(n.modifier_list[0] as CstNode),
-                value: n.quoted_attribute_value ? this.visit(n.quoted_attribute_value[0] as CstNode) : []
+                value: n.quoted_attribute_value ? this.visit(n.quoted_attribute_value[0] as CstNode) : [],
+                position: pos(startPosition, endPosition)
             } as Property
         }
     }
@@ -191,10 +245,17 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
     }
 
     expression(n: CstChildrenDictionary): SvelteExpression {
-        return expressionNode(n.ExprContent[0] as IToken);
+        const expr =  expressionNode(n.ExprContent[0] as IToken);
+        expr.position = pos(from_start(n.LCurly[0] as IToken), from_end(n.RCurly[0] as IToken, 1))
+        return expr;
     }
 
-    closetag(n: CstChildrenDictionary) {}
+    closetag(n: CstChildrenDictionary): Node {
+        return {
+            type: "__closeTag",
+            position: pos(from_start(n.CloseTag[0] as IToken), from_end(n.RAngle[0] as IToken))
+        }
+    }
 }
 
 

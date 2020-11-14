@@ -12,7 +12,7 @@ const inputs = fs
 	)
 	.map((f) => [
 		f.name,
-		fs.readFileSync(path.join(fixtures, f.name, 'input.svelte')).toString(),
+		fs.readFileSync(path.join(fixtures, f.name, 'input.svelte')).toString().replace(/\r\n/gi, "\n"),
 		JSON.parse(
 			fs.readFileSync(path.join(fixtures, f.name, 'output.json')).toString()
 		),
