@@ -1,0 +1,89 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteComponent",
+			"tagName": "Widget",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "foo",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "42",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 13,
+									"offset": 12
+								},
+								"end": {
+									"line": 1,
+									"column": 17,
+									"offset": 16
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 1,
+							"column": 17,
+							"offset": 16
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 18,
+							"offset": 17
+						},
+						"end": {}
+					},
+					"specifier": "foo"
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 1,
+					"column": 28,
+					"offset": 27
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 1,
+			"column": 28,
+			"offset": 27
+		}
+	}
+}

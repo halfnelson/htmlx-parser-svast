@@ -42,7 +42,7 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
 
     // tag_content := tag_child*
     tag_content(n: CstChildrenDictionary): TagChild[] {
-        return n.tag_child?.map(c => this.visit(c as CstNode)) ?? []
+        return n.tag_child?.map(c => this.visit(c as CstNode)).filter(Boolean) ?? []
     }
 
     // tag_child := tag | text | void_block | branch_block | expression
@@ -52,7 +52,7 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         if (n.void_block) return this.visit(n.void_block[0] as CstNode);
         if (n.branch_block) return this.visit(n.branch_block[0] as CstNode);
         if (n.expression) return this.visit(n.expression[0] as CstNode);
-        throw new Error("unexpected tag child type")
+        return null
     }
 
     tag(n: CstChildrenDictionary): TagType {
@@ -68,7 +68,7 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         }
         el.selfClosing = !!n.Slash;
         el.properties = this.visit(n.attribute_list[0] as CstNode)
-        el.children = this.visit(n.tag_content[0] as CstNode)
+        el.children = n.tag_content ?  this.visit(n.tag_content[0] as CstNode) : []
         return el as TagType
     }
 
@@ -94,7 +94,7 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         return {
             type: "svelteBranch",
             name: (n.BranchBlockOpen[0] as IToken).image.substring(1),
-            expression: n.ExprContent ? expressionNode(n.ExprContent[0] as IToken) : undefined,
+            expression: n.ExprContent ? expressionNode(n.ExprContent[0] as IToken) : null,
             children: n.tag_content ? this.visit(n.tag_content[0] as CstNode) : []
         }
     }
@@ -103,7 +103,7 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         return {
             type: "svelteBranch",
             name: (n.BranchBlockContinue[0] as IToken).image.substring(1),
-            expression: n.ExprContent ? expressionNode(n.ExprContent[0] as IToken) : undefined,
+            expression: n.ExprContent ? expressionNode(n.ExprContent[0] as IToken) : null,
             children: n.tag_content ? this.visit(n.tag_content[0] as CstNode) : []
         }
     }
