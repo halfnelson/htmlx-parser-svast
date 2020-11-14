@@ -3,8 +3,6 @@ import { AttrText, BranchBlockContinue, BranchBlockEnd, BranchBlockOpen, CloseTa
          OpenTag, Pipe, RAngle, RCurly, Slash, SQuote, SQuotedString, 
          SQuoteEnd, SvelteLexer, svelteTokens, TagContent, VoidBlock, WhiteSpace } from "./lexer";
 
-
-
 // ----------------- parser -----------------
 export class SvelteParser extends CstParser {
     constructor() {
@@ -165,7 +163,8 @@ export class SvelteParser extends CstParser {
     })
 }
 
-export let parser: SvelteParser;
+
+export var parser: SvelteParser;
 
 export function parseSvelte(text: string) {
     const lexingResult = SvelteLexer.tokenize(text);

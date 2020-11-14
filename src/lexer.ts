@@ -1,4 +1,4 @@
-import { createToken, CstParser, Lexer } from 'chevrotain'
+import { createToken, Lexer } from 'chevrotain'
 
 // ----------------- Lexer -----------------
 export const LAngle = createToken({ name: "LAngle", pattern: /</, push_mode: "tag_mode" });
