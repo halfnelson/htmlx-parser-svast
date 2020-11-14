@@ -1,9 +1,9 @@
 import { CstNode } from 'chevrotain';
 import { Root } from 'svast'
-import { SvelteParser } from './parser';
+import { HtmlxParser } from './parser';
 
 
-const parserInstance = new SvelteParser();
+const parserInstance = new HtmlxParser();
 
 const BaseHtmlxLVisitor = parserInstance.getBaseCstVisitorConstructor()
 

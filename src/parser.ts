@@ -1,10 +1,10 @@
 import { CstParser } from "chevrotain";
 import { AttrText, BranchBlockContinue, BranchBlockEnd, BranchBlockOpen, CloseTag, DQuote, DQuotedString, DQuoteEnd, Equal, ExprContent, LCurly, 
          OpenTag, Pipe, RAngle, RCurly, Slash, SQuote, SQuotedString, 
-         SQuoteEnd, SvelteLexer, svelteTokens, TagContent, VoidBlock, WhiteSpace } from "./lexer";
+         SQuoteEnd, HtmlxLexer, svelteTokens, TagContent, VoidBlock, WhiteSpace } from "./lexer";
 
 // ----------------- parser -----------------
-export class SvelteParser extends CstParser {
+export class HtmlxParser extends CstParser {
     constructor() {
         super(svelteTokens, {
             recoveryEnabled: true
@@ -17,6 +17,7 @@ export class SvelteParser extends CstParser {
 
     tag_content = this.RULE("tag_content", () =>
         this.MANY({
+            // Guard against going down this path for branch_block continuations or endings
             GATE: () => this.LA(1).tokenType != LCurly || (this.LA(2).tokenType != BranchBlockContinue && this.LA(2).tokenType != BranchBlockEnd),
             DEF: () => this.SUBRULE(this.tag_child)
         })
@@ -164,16 +165,17 @@ export class SvelteParser extends CstParser {
 }
 
 
-export var parser: SvelteParser;
+export var parser: HtmlxParser = new HtmlxParser();
 
-export function parseSvelte(text: string) {
-    const lexingResult = SvelteLexer.tokenize(text);
+export function parseHtmlxToCst(text: string) {
+    const lexingResult = HtmlxLexer.tokenize(text);
     // reuse the instance
-    parser = parser ?? new SvelteParser();
-
     parser.input = lexingResult.tokens;
     let result = parser.tag_content();
 
-    console.log("Errors", JSON.stringify(parser.errors, null, 2));
-    return result;
+    return {
+        lex_errors: lexingResult.errors,
+        parse_errors: parser.errors,
+        cst: result
+    }
 }

@@ -45,7 +45,7 @@ export const svelteTokens = [LAngle, RAngle, Colon, DQuote, DQuotedString, DQuot
     VoidBlock, BranchBlockOpen, BranchBlockContinue, BranchBlockEnd
 ]
 
-export const SvelteLexer = new Lexer({
+export const HtmlxLexer = new Lexer({
     defaultMode: "content_mode",
     modes: {
         content_mode: [
