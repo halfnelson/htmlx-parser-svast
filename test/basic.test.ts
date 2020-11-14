@@ -7,9 +7,20 @@ const parser = suite('parser');
 parser('returns cstNode', () => {
     const res = parseHtmlxToCst('<h1></h1>')
     assert.ok(res);
-    assert.equal(res.lex_errors.length, 0);
-    assert.equal(res.parse_errors.length, 0)
-    assert.equal(res.cst.name, 'tag_content');
+    assert.ok(res.cst?.name);
+})
+
+parser('returns lexErrors', () => {
+    const res = parseHtmlxToCst('<h1') //TODO: workout how to make this throw an error :)
+    assert.ok(res);
+    assert.ok(Array.isArray(res.lex_errors));
+})
+
+parser('returns parseErrors', () => {
+    const res = parseHtmlxToCst('<h1')
+    assert.ok(res);
+    assert.ok(Array.isArray(res.parse_errors));
+    assert.ok(res.parse_errors.length > 0);
 })
 
 parser.run();
