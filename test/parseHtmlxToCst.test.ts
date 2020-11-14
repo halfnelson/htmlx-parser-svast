@@ -2,7 +2,7 @@ import { suite } from 'uvu'
 import { parseHtmlxToCst } from '../src/parser'
 import * as assert from 'uvu/assert'
 
-const parser = suite('parser');
+const parser = suite('parseHtmlxToCst');
 
 parser('returns cstNode', () => {
     const res = parseHtmlxToCst('<h1></h1>')

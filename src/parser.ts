@@ -15,6 +15,8 @@ export class HtmlxParser extends CstParser {
         this.performSelfAnalysis();
     }
 
+    root = this.RULE("root", () => this.SUBRULE(this.tag_content))
+
     tag_content = this.RULE("tag_content", () =>
         this.MANY({
             // Guard against going down this path for branch_block continuations or endings
@@ -100,13 +102,17 @@ export class HtmlxParser extends CstParser {
             GATE: () => this.LA(2).image != '/',  // Guard against going down this path for `lastAttribute=5/>`
             DEF: () => {
                 this.CONSUME(WhiteSpace)
-                this.OR([
-                    { ALT: () => this.SUBRULE(this.attribute) },
-                    { ALT: () => this.SUBRULE(this.expression) }
-                ])
+                this.SUBRULE(this.attribute_or_expression)
             }
         })
     });
+
+    attribute_or_expression = this.RULE("attribute_or_expression", () => 
+        this.OR([
+            { ALT: () => this.SUBRULE(this.attribute) },
+            { ALT: () => this.SUBRULE(this.expression) }
+        ])
+    )
 
     attribute = this.RULE("attribute", () => {
         this.CONSUME(AttrText)
@@ -133,29 +139,35 @@ export class HtmlxParser extends CstParser {
     });
 
     unquoted_value = this.RULE("unquoted_value", () => {
-        this.MANY(() => this.OR([
-            { ALT: () => this.CONSUME(AttrText) },
-            { ALT: () => this.SUBRULE(this.expression) }
-        ]))
+        this.MANY(() => this.SUBRULE(this.noquote_string_or_expression))
     })
+
+    noquote_string_or_expression = this.RULE("noquote_string_or_expression", () => this.OR([
+        { ALT: () => this.CONSUME(AttrText) },
+        { ALT: () => this.SUBRULE(this.expression) }
+    ]))
 
     double_quoted_value = this.RULE("double_quoted_value", () => {
         this.CONSUME(DQuote)
-        this.MANY(() => this.OR([
-            { ALT: () => this.CONSUME(DQuotedString) },
-            { ALT: () => this.SUBRULE(this.expression) }
-        ]))
+        this.MANY(() => this.SUBRULE(this.dquote_string_or_expression))
         this.CONSUME(DQuoteEnd)
     })
 
+    dquote_string_or_expression = this.RULE("dquote_string_or_expression", () => this.OR([
+        { ALT: () => this.CONSUME(DQuotedString) },
+        { ALT: () => this.SUBRULE(this.expression) }
+    ]))
+
     single_quoted_value = this.RULE("single_quoted_value", () => {
         this.CONSUME(SQuote)
-        this.MANY(() => this.OR([
-            { ALT: () => this.CONSUME(SQuotedString) },
-            { ALT: () => this.SUBRULE(this.expression) }
-        ]))
+        this.MANY(() => this.SUBRULE(this.squote_string_or_expression))
         this.CONSUME(SQuoteEnd)
     })
+
+    squote_string_or_expression = this.RULE("squote_string_or_expression", () => this.OR([
+        { ALT: () => this.CONSUME(SQuotedString) },
+        { ALT: () => this.SUBRULE(this.expression) }
+    ]))
 
     expression = this.RULE("expression", () => {
         this.CONSUME(LCurly)
@@ -171,7 +183,7 @@ export function parseHtmlxToCst(text: string) {
     const lexingResult = HtmlxLexer.tokenize(text);
     // reuse the instance
     parser.input = lexingResult.tokens;
-    let result = parser.tag_content();
+    let result = parser.root();
 
     return {
         lex_errors: lexingResult.errors,
