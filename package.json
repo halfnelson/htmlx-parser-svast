@@ -10,9 +10,11 @@
     "watch": "rollup -c -w",
     "test:filter": "uvu -r ts-node/register test",
     "test:generate": "node -r ts-node/register ./test/compat-samples/generate.ts",
-    "test": "uvu -r ts-node/register test test.ts$"
+    "test": "uvu -r ts-node/register test test.ts$",
+    "prepublish": "npm run build"
   },
   "files": [
+    "package.json",
     "README.md",
     "CHANGES.md",
     "LICENSE",
