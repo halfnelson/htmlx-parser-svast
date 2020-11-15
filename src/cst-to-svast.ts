@@ -1,73 +1,13 @@
 import { CstChildrenDictionary,  CstNode,  IToken } from 'chevrotain';
 import { BranchingBlock, Root, SvelteComponent, SvelteElement, SvelteExpression, VoidBlock, Text, SvelteMeta, Property, Directive, Branch, Literal, Point, Position, Node, Comment, SvelteScript, SvelteStyle } from 'svast'
-import { RCurly } from './lexer';
-
 import { HtmlxParser } from './parser';
-
+import { pos, after, offset_col, start } from './util';
 
 const parserInstance = new HtmlxParser();
 
 const BaseHtmlxLVisitor = parserInstance.getBaseCstVisitorConstructor()
 
-function textNode(value: IToken): Text {
-    return {
-        type: "text",
-        value: value.image,
-        position: pos(start(value), after(value))
-    }
-}
-
-function expressionNode(value: IToken): SvelteExpression {
-    return {
-        type: "svelteExpression",
-        value: value.image,
-        position: pos(start(value), after(value))
-    }
-}
-
-function offset_col(p: Point, col_offset: number) {
-    return {
-        offset: p.offset + col_offset,
-        column: p.column + col_offset,
-        line: p.line
-    }
-}
-
-function start(node: IToken): Point {
-    return {
-        offset: node.startOffset,
-        column: node.startColumn,
-        line: node.startLine
-    }
-}
-
-function end(node: IToken) {
-    return {
-        offset: node.endOffset,
-        column: node.endColumn,
-        line: node.endLine
-    }
-}
-
-function after(node: IToken) {
-    const imgLength = node.image.length;
-    const endsWithNewline = (imgLength && node.image[imgLength - 1] == '\n');
-    return {
-        offset: node.endOffset + 1,
-        column: endsWithNewline ? 1 : node.endColumn + 1,
-        line: endsWithNewline ? node.endLine + 1 : node.endLine
-    }
-}
-
-function pos(start: Point, end: Point): Position {
-    return {
-        start: start,
-        end: end
-    }
-}
-
 type TagChild = SvelteComponent | SvelteElement | SvelteMeta | SvelteExpression | BranchingBlock | VoidBlock | Text | SvelteScript | SvelteStyle | Comment
-
 type TagType = SvelteComponent | SvelteElement | SvelteMeta
 
 class HtmlxVisitor extends BaseHtmlxLVisitor {
@@ -103,8 +43,6 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         if (n.script_tag) return this.visit(n.script_tag[0] as CstNode);
         if (n.style_tag) return this.visit(n.style_tag[0] as CstNode);
         if (n.comment_tag) return this.visit(n.comment_tag[0] as CstNode);
-        console.log(n);
-        throw new Error("Unknown tag child")
     }
 
     tag(n: CstChildrenDictionary): TagType {
@@ -125,14 +63,8 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         if (el.selfClosing) {
             el.position = pos(start(n.OpenTag[0] as IToken), after(n.RAngle[0] as IToken))
         } else {
-            if (n.closetag) {
-                const closeTag = this.visit(n.closetag[0] as CstNode) as Node;
-                el.position = pos(start(n.OpenTag[0] as IToken), closeTag.position.end);
-            } else {
-                console.log("didn't get expected closeTag", n);
-                throw new Error("fail");
-                
-            }
+            const closeTag = this.visit(n.closetag[0] as CstNode) as Node;
+            el.position = pos(start(n.OpenTag[0] as IToken), closeTag.position.end);
         }
        
         return el as TagType
@@ -226,7 +158,7 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
     }
 
     text(n: CstChildrenDictionary): Text {
-        return textNode(n.TagContent[0] as IToken)
+        return textNode(n.TextContent[0] as IToken)
     }
 
     attribute_list(n: CstChildrenDictionary): (Property | Directive)[] {
@@ -330,8 +262,21 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
     }
 }
 
+function textNode(value: IToken): Text {
+    return {
+        type: "text",
+        value: value.image,
+        position: pos(start(value), after(value))
+    }
+}
 
-
+function expressionNode(value: IToken): SvelteExpression {
+    return {
+        type: "svelteExpression",
+        value: value.image,
+        position: pos(start(value), after(value))
+    }
+}
 
 export function cstToSvast(root :CstNode): Root {
     const visitor = new HtmlxVisitor();

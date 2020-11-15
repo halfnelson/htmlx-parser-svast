@@ -1,9 +1,10 @@
 {
-  "name": "htmlx-svast-parser",
+  "name": "htmlx-parser-svast",
   "version": "0.1.0",
-  "description": "Htmlx parser which generates svast",
+  "description": "Htmlx parser which generates unist/svast AST",
   "main": "dist/index.cjs.js",
   "module": "dist/index.es.js",
+  "types": "types/index.d.ts",
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
@@ -11,18 +12,33 @@
     "test:generate": "node -r ts-node/register ./test/compat-samples/generate.ts",
     "test": "uvu -r ts-node/register test test.ts$"
   },
-  "author": "",
+  "files": [
+    "README.md",
+    "CHANGES.md",
+    "LICENSE",
+    "types/*",
+    "dist/*"
+  ],
+  "keywords": [
+    "svast",
+    "parser",
+    "htmlx"
+  ],
+  "author": "David Pershouse",
   "license": "MIT",
-  "dependencies": {
-    "svast": "0.0.3",
-    "chevrotain": "^7.0.3"
+  "peerDependencies": {
+    "svast": "^0.0.3"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^16.0.0",
+    "@rollup/plugin-node-resolve": "^10.0.0",
     "@rollup/plugin-typescript": "^6.1.0",
     "@types/node": "^14.14.7",
+    "chevrotain": "^7.0.3",
     "rollup": "^2.33.1",
     "rollup-plugin-dts": "^1.4.13",
-    "svelte-parse": "0.0.4",
+    "rollup-plugin-terser": "^7.0.2",
+    "svast": "^0.0.3",
     "ts-node": "^9.0.0",
     "tslib": "2.0.3",
     "typescript": "^4.0.5",

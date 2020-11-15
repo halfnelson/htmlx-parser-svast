@@ -1,23 +1,18 @@
 import * as path from 'path';
 import * as fs from 'fs';
 
-import { parse } from '../src/index'; //Modified to suit htmlx-parser-svast
+import { suite } from 'uvu';
+import * as assert from 'uvu/assert';
+import { parse } from '../src/index'; 
 
-const fixtures = path.join(__dirname, 'compat-samples');
+const fixtures = path.join(__dirname, 'samples');
 
 const inputs = fs
 	.readdirSync(fixtures, { encoding: 'utf-8', withFileTypes: true })
-	.filter(
-		f => f.isDirectory()
-	)
+	.filter(f => f.isDirectory() && !f.name.match(/\.skip$/))
 	.map((f) => f.name)
-    .filter(n => !n.match(/\.skip$/))
 
-
-import { suite } from 'uvu';
-import * as assert from 'uvu/assert';
-
-const samples = suite('compat-sample');
+const samples = suite('samples');
 
 inputs.forEach(sample_folder => {
 	samples(`inputs should equal outputs: ${sample_folder}`, () => {

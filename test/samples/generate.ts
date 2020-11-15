@@ -2,14 +2,11 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { parse } from '../../src/index';
 
-
 const fixtures =__dirname;
 
 const inputs = fs
 	.readdirSync(fixtures, { encoding: 'utf-8', withFileTypes: true })
-	.filter(
-		f => f.isDirectory()
-	)
+	.filter(f => f.isDirectory())
     .map((f) => f.name)
     
 inputs.forEach(sample_folder => {
