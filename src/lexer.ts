@@ -20,14 +20,14 @@ export const Slash = createToken({ name: "Slash", pattern: /\// });
 
 
 export const OpenScriptTag = createToken({ name: "OpenScriptTag", pattern: /<script/, push_mode: "script_tag_mode"})
-export const ScriptContentAndEndTag = createToken({ name: "ScriptContentAndEndTag", pattern: /.*<\/script>/, pop_mode: true })
+export const ScriptContentAndEndTag = createToken({ name: "ScriptContentAndEndTag", pattern: /[\s\S]*<\/script>/, pop_mode: true })
 export const ScriptRAngle = createToken({ name: "ScriptRAngle", pattern: />/, pop_mode: true, push_mode: "script_content_mode" });
 
 export const OpenStyleTag = createToken({ name: "OpenStyleTag", pattern: /<style/, push_mode: "style_tag_mode"})
-export const StyleContentAndEndTag = createToken({ name: "StyleContentAndEndTag", pattern: /.*<\/style>/, pop_mode: true })
+export const StyleContentAndEndTag = createToken({ name: "StyleContentAndEndTag", pattern: /[\s\S]*<\/style>/, pop_mode: true })
 export const StyleRAngle = createToken({ name: "StyleRAngle", pattern: />/, pop_mode: true, push_mode: "style_content_mode" });
 
-export const CommentTag = createToken({ name: "CommentTag", pattern: /<\!\-\-.*?\-\->/ })
+export const CommentTag = createToken({ name: "CommentTag", pattern: /<\!\-\-[\s\S]*?\-\->/ })
 
 export const OpenTag = createToken({ name: "OpenTag", pattern: /<[a-zA-Z0-9:\-]+/, push_mode: "tag_mode" });
 export const CloseTag = createToken({ name: "CloseTag", pattern: /<\/[a-zA-Z0-9:\-]+/, push_mode: "tag_mode" });
@@ -47,7 +47,6 @@ export const WhiteSpace = createToken({
     name: "WhiteSpace",
     pattern: /\s+/
 });
-
 
 export const svelteTokens = [LAngle, RAngle, Colon, DQuote, DQuotedString, DQuoteEnd,
     SQuote, SQuotedString, SQuoteEnd,
@@ -103,6 +102,7 @@ export const HtmlxLexer = new Lexer({
         ],
 
         expr_mode: [
+            WhiteSpace,
             VoidBlock,
             BranchBlockOpen,
             BranchBlockContinue,

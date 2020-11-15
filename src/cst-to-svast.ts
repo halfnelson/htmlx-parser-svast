@@ -1,5 +1,6 @@
 import { CstChildrenDictionary,  CstNode,  IToken } from 'chevrotain';
 import { BranchingBlock, Root, SvelteComponent, SvelteElement, SvelteExpression, VoidBlock, Text, SvelteMeta, Property, Directive, Branch, Literal, Point, Position, Node, Comment, SvelteScript, SvelteStyle } from 'svast'
+import { RCurly } from './lexer';
 
 import { HtmlxParser } from './parser';
 
@@ -184,35 +185,43 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         return {    
             type: "svelteVoidBlock",
             name: (n.VoidBlock[0] as IToken).image.substring(1),
-            expression: expressionNode(n.ExprContent[0] as IToken)
+            expression: expressionNode(n.ExprContent[0] as IToken),
+            position: pos(start(n.LCurly[0] as IToken), after(n.RCurly[0] as IToken))
         } as VoidBlock
     }
 
     branch_block(n: CstChildrenDictionary): BranchingBlock {
-        let startBranch: Branch = this.visit(n.start_branch[0] as CstNode);
-        let otherBranches: Branch[] = n.branch?.map(b => this.visit(b as CstNode)) ?? [];
+        const startBranch: Branch = this.visit(n.start_branch[0] as CstNode);
+        const otherBranches: Branch[] = n.branch?.map(b => this.visit(b as CstNode)) ?? [];
         return {
             type: "svelteBranchingBlock",
             branches: [startBranch, ...otherBranches],
-            name: startBranch.name
+            name: startBranch.name,
+            position: pos(startBranch.position.start, after(n.RCurly[0] as IToken))
         }
     }
 
     start_branch(n: CstChildrenDictionary): Branch {
+        const children = n.tag_content ? this.visit(n.tag_content[0] as CstNode) : [];
+        const endPos = children.length ? (children[children.length - 1] as TagChild).position.end : after(n.RCurly[0] as IToken);
         return {
             type: "svelteBranch",
             name: (n.BranchBlockOpen[0] as IToken).image.substring(1),
             expression: n.ExprContent ? expressionNode(n.ExprContent[0] as IToken) : null,
-            children: n.tag_content ? this.visit(n.tag_content[0] as CstNode) : []
+            children: children,
+            position: pos(start(n.LCurly[0] as IToken), endPos)
         }
     }
 
     branch(n: CstChildrenDictionary): Branch {
+        const children = n.tag_content ? this.visit(n.tag_content[0] as CstNode) : [];
+        const endPos = children.length ? (children[children.length - 1] as TagChild).position.end : after(n.RCurly[0] as IToken);
         return {
             type: "svelteBranch",
             name: (n.BranchBlockContinue[0] as IToken).image.substring(1),
             expression: n.ExprContent ? expressionNode(n.ExprContent[0] as IToken) : null,
-            children: n.tag_content ? this.visit(n.tag_content[0] as CstNode) : []
+            children: children,
+            position: pos(start(n.LCurly[0] as IToken), endPos)
         }
     }
 

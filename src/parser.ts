@@ -81,8 +81,9 @@ export class HtmlxParser extends CstParser {
     void_block = this.RULE("void_block", () => {
         this.CONSUME(LCurly)
         this.CONSUME(VoidBlock)
-        this.CONSUME(ExprContent)
-        this.CONSUME(RCurly)
+        this.OPTION(() => this.CONSUME(WhiteSpace))
+        this.OPTION2(() => this.CONSUME(ExprContent))
+        this.CONSUME2(RCurly)
     })
 
     branch_block = this.RULE("branch_block", () => {
@@ -90,23 +91,26 @@ export class HtmlxParser extends CstParser {
         this.MANY(() => this.SUBRULE(this.branch))
         this.CONSUME(LCurly)
         this.CONSUME(BranchBlockEnd)
+        this.OPTION(() => this.CONSUME(WhiteSpace))
         this.CONSUME(RCurly)
     })
 
     start_branch = this.RULE("start_branch", () => {
         this.CONSUME(LCurly)
         this.CONSUME(BranchBlockOpen)
-        this.OPTION(() => this.CONSUME(ExprContent))
+        this.OPTION(() => this.CONSUME(WhiteSpace))
+        this.OPTION2(() => this.CONSUME(ExprContent))
         this.CONSUME(RCurly)
-        this.OPTION2(() => this.SUBRULE(this.tag_content))
+        this.OPTION3(() => this.SUBRULE(this.tag_content))
     })
 
     branch = this.RULE("branch", () => {
         this.CONSUME(LCurly)
         this.CONSUME(BranchBlockContinue)
-        this.OPTION(() => this.CONSUME(ExprContent))
+        this.OPTION(() => this.CONSUME(WhiteSpace))
+        this.OPTION2(() => this.CONSUME(ExprContent))
         this.CONSUME(RCurly)
-        this.OPTION2(() => this.SUBRULE(this.tag_content))
+        this.OPTION3(() => this.SUBRULE(this.tag_content))
     })
 
     text = this.RULE("text", () => {
