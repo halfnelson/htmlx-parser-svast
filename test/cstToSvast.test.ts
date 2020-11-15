@@ -15,7 +15,6 @@ function cst(input: string) {
 converter("returns a Root", () => {
     const input = cst('{#each blah}<h1 prop=ten>hi</h1>{/each}');
     const res = cstToSvast(input);
-    console.log(JSON.stringify(res,null,2));
     assert.ok(res);
     assert.is(res.type, "root")
 })

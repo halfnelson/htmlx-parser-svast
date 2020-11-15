@@ -197,6 +197,7 @@ export class HtmlxParser extends CstParser {
 
     expression = this.RULE("expression", () => {
         this.CONSUME(LCurly)
+        this.OPTION(() => this.CONSUME(WhiteSpace))
         this.CONSUME(ExprContent)
         this.CONSUME(RCurly)
     })
