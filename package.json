@@ -8,6 +8,7 @@
     "build": "rollup -c",
     "watch": "rollup -c -w",
     "test:filter": "uvu -r ts-node/register test",
+    "test:generate": "node -r ts-node/register ./test/compat-samples/generate.ts",
     "test": "uvu -r ts-node/register test test.ts$"
   },
   "author": "",
@@ -18,8 +19,10 @@
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^6.1.0",
+    "@types/node": "^14.14.7",
     "rollup": "^2.33.1",
     "rollup-plugin-dts": "^1.4.13",
+    "svelte-parse": "0.0.4",
     "ts-node": "^9.0.0",
     "tslib": "2.0.3",
     "typescript": "^4.0.5",
