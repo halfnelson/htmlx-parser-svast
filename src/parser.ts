@@ -1,7 +1,7 @@
 import { CstParser } from "chevrotain";
 import { AttrText, BranchBlockContinue, BranchBlockEnd, BranchBlockOpen, CloseTag, DQuote, DQuotedString, DQuoteEnd, Equal, ExprContent, LCurly, 
          OpenTag, Pipe, RAngle, RCurly, Slash, SQuote, SQuotedString, 
-         SQuoteEnd, HtmlxLexer, svelteTokens, TagContent, VoidBlock, WhiteSpace, ScriptRAngle, ScriptContentAndEndTag, OpenScriptTag } from "./lexer";
+         SQuoteEnd, HtmlxLexer, svelteTokens, TagContent, VoidBlock, WhiteSpace, ScriptRAngle, ScriptContentAndEndTag, OpenScriptTag, OpenStyleTag, StyleRAngle, StyleContentAndEndTag, CommentTag } from "./lexer";
 
 // ----------------- parser -----------------
 export class HtmlxParser extends CstParser {
@@ -29,12 +29,17 @@ export class HtmlxParser extends CstParser {
         this.OR([
             { ALT: () => this.SUBRULE(this.tag) },
             { ALT: () => this.SUBRULE(this.script_tag) },
+            { ALT: () => this.SUBRULE(this.style_tag) },
+            { ALT: () => this.SUBRULE(this.comment_tag) },
             { ALT: () => this.SUBRULE(this.text) },
             { ALT: () => this.SUBRULE(this.void_block) },
             { ALT: () => this.SUBRULE(this.branch_block) },
             { ALT: () => this.SUBRULE(this.expression) }
         ])
     )
+    comment_tag = this.RULE("comment_tag", () => {
+        this.CONSUME(CommentTag)
+    })
 
     script_tag = this.RULE("script_tag", () => {
         this.CONSUME(OpenScriptTag)
@@ -42,6 +47,14 @@ export class HtmlxParser extends CstParser {
         this.OPTION(() => this.CONSUME(WhiteSpace))
         this.CONSUME(ScriptRAngle)
         this.CONSUME(ScriptContentAndEndTag)
+    })
+
+    style_tag = this.RULE("style_tag", () => {
+        this.CONSUME(OpenStyleTag)
+        this.SUBRULE(this.attribute_list)
+        this.OPTION(() => this.CONSUME(WhiteSpace))
+        this.CONSUME(StyleRAngle)
+        this.CONSUME(StyleContentAndEndTag)
     })
 
     tag = this.RULE("tag", () => {

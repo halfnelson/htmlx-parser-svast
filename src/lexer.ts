@@ -20,14 +20,14 @@ export const Slash = createToken({ name: "Slash", pattern: /\// });
 
 
 export const OpenScriptTag = createToken({ name: "OpenScriptTag", pattern: /<script/, push_mode: "script_tag_mode"})
-export const ScriptContentAndEndTag = createToken({ name: "ScriptContentAndEndTag", pattern: /.+<\/script>/, pop_mode: true })
+export const ScriptContentAndEndTag = createToken({ name: "ScriptContentAndEndTag", pattern: /.*<\/script>/, pop_mode: true })
 export const ScriptRAngle = createToken({ name: "ScriptRAngle", pattern: />/, pop_mode: true, push_mode: "script_content_mode" });
 
 export const OpenStyleTag = createToken({ name: "OpenStyleTag", pattern: /<style/, push_mode: "style_tag_mode"})
-export const StyleContent = createToken({ name: "StyleContent", pattern: /.*(?!<\/style\s*>)/s, pop_mode: true })
+export const StyleContentAndEndTag = createToken({ name: "StyleContentAndEndTag", pattern: /.*<\/style>/, pop_mode: true })
 export const StyleRAngle = createToken({ name: "StyleRAngle", pattern: />/, pop_mode: true, push_mode: "style_content_mode" });
 
-export const OpenCommentTag = createToken({ name: "OpenStyleTag", pattern: /<script/, push_mode: "comment_mode"})
+export const CommentTag = createToken({ name: "CommentTag", pattern: /<\!\-\-.*?\-\->/ })
 
 export const OpenTag = createToken({ name: "OpenTag", pattern: /<[a-zA-Z0-9:\-]+/, push_mode: "tag_mode" });
 export const CloseTag = createToken({ name: "CloseTag", pattern: /<\/[a-zA-Z0-9:\-]+/, push_mode: "tag_mode" });
@@ -54,7 +54,9 @@ export const svelteTokens = [LAngle, RAngle, Colon, DQuote, DQuotedString, DQuot
     Slash, OpenTag, CloseTag, AttrText,
     LCurly, ExprContent, TagContent, RCurly, WhiteSpace,
     VoidBlock, BranchBlockOpen, BranchBlockContinue, BranchBlockEnd,
-    OpenScriptTag, ScriptRAngle, ScriptContentAndEndTag
+    OpenScriptTag, ScriptRAngle, ScriptContentAndEndTag,
+    OpenStyleTag, StyleRAngle, StyleContentAndEndTag,
+    CommentTag
 ]
 
 const attributeTokens = [
@@ -71,9 +73,10 @@ export const HtmlxLexer = new Lexer({
     defaultMode: "content_mode",
     modes: {
         content_mode: [
-           
             TagContent,
             LCurly,
+            CommentTag,
+            OpenStyleTag,
             OpenScriptTag,
             OpenTag,
             CloseTag
@@ -91,6 +94,14 @@ export const HtmlxLexer = new Lexer({
         script_content_mode: [
             ScriptContentAndEndTag
         ],
+        style_tag_mode: [
+            ...attributeTokens,
+            StyleRAngle
+        ],
+        style_content_mode: [
+            StyleContentAndEndTag
+        ],
+
         expr_mode: [
             VoidBlock,
             BranchBlockOpen,
