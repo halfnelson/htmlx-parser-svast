@@ -11,7 +11,7 @@ const inputs = fs
 		f => f.isDirectory()
 	)
     .map((f) => f.name)
-
+    
 inputs.forEach(sample_folder => {
     const input = fs.readFileSync(path.join(fixtures, sample_folder, 'input.svelte')).toString().replace(/\r\n/gi, "\n");
     const expected = parse({value: input, generatePositions: true});

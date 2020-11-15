@@ -1,7 +1,7 @@
 import { CstParser } from "chevrotain";
 import { AttrText, BranchBlockContinue, BranchBlockEnd, BranchBlockOpen, CloseTag, DQuote, DQuotedString, DQuoteEnd, Equal, ExprContent, LCurly, 
          OpenTag, Pipe, RAngle, RCurly, Slash, SQuote, SQuotedString, 
-         SQuoteEnd, HtmlxLexer, svelteTokens, TagContent, VoidBlock, WhiteSpace } from "./lexer";
+         SQuoteEnd, HtmlxLexer, svelteTokens, TagContent, VoidBlock, WhiteSpace, ScriptRAngle, ScriptContentAndEndTag, OpenScriptTag } from "./lexer";
 
 // ----------------- parser -----------------
 export class HtmlxParser extends CstParser {
@@ -28,12 +28,21 @@ export class HtmlxParser extends CstParser {
     tag_child = this.RULE("tag_child", () => 
         this.OR([
             { ALT: () => this.SUBRULE(this.tag) },
+            { ALT: () => this.SUBRULE(this.script_tag) },
             { ALT: () => this.SUBRULE(this.text) },
             { ALT: () => this.SUBRULE(this.void_block) },
             { ALT: () => this.SUBRULE(this.branch_block) },
             { ALT: () => this.SUBRULE(this.expression) }
         ])
     )
+
+    script_tag = this.RULE("script_tag", () => {
+        this.CONSUME(OpenScriptTag)
+        this.SUBRULE(this.attribute_list)
+        this.OPTION(() => this.CONSUME(WhiteSpace))
+        this.CONSUME(ScriptRAngle)
+        this.CONSUME(ScriptContentAndEndTag)
+    })
 
     tag = this.RULE("tag", () => {
         this.CONSUME(OpenTag)
@@ -99,9 +108,9 @@ export class HtmlxParser extends CstParser {
 
     attribute_list = this.RULE("attribute_list", () => {
         this.MANY({
-            GATE: () => this.LA(2).image != '/',  // Guard against going down this path for `lastAttribute=5/>`
+            GATE: () => this.LA(2).image != '/' && this.LA(2).image != '>',  // Guard against going down this path for `lastAttribute=5/>`
             DEF: () => {
-                this.CONSUME(WhiteSpace)
+                this.OPTION(() => this.CONSUME(WhiteSpace))
                 this.SUBRULE(this.attribute_or_expression)
             }
         })

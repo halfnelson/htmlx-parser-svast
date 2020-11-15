@@ -12,7 +12,7 @@ function textNode(value: IToken): Text {
     return {
         type: "text",
         value: value.image,
-        position: pos(from_start(value), from_end(value, 1))
+        position: pos(start(value), after(value))
     }
 }
 
@@ -20,7 +20,7 @@ function expressionNode(value: IToken): SvelteExpression {
     return {
         type: "svelteExpression",
         value: value.image,
-        position: pos(from_start(value), from_end(value, 1))
+        position: pos(start(value), after(value))
     }
 }
 
@@ -32,19 +32,27 @@ function offset_col(p: Point, col_offset: number) {
     }
 }
 
-function from_start(node: CstNodeLocation | IToken, col_offset: number = 0): Point {
+function start(node: IToken): Point {
     return {
-        offset: node.startOffset + col_offset,
-        column: node.startColumn + col_offset,
+        offset: node.startOffset,
+        column: node.startColumn,
         line: node.startLine
     }
 }
 
-function from_end(node: CstNodeLocation | IToken, col_offset: number = 0): Point {
+function end(node: IToken) {
     return {
-        offset: node.endOffset + col_offset,
-        column: node.endColumn + col_offset,
+        offset: node.endOffset,
+        column: node.endColumn,
         line: node.endLine
+    }
+}
+
+function after(node: IToken) {
+    return {
+        offset: node.endOffset + 1,
+        column: node.image == '\n' ? 1 : node.endColumn + 1,
+        line: node.image == '\n' ? node.endLine + 1 : node.endLine
     }
 }
 
@@ -108,10 +116,16 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         el.children = n.tag_content ?  this.visit(n.tag_content[0] as CstNode) : []
 
         if (el.selfClosing) {
-            el.position = pos(from_start(n.OpenTag[0] as IToken), from_end(n.RAngle[0] as IToken))
+            el.position = pos(start(n.OpenTag[0] as IToken), after(n.RAngle[0] as IToken))
         } else {
-            const closeTag = this.visit(n.closetag[0] as CstNode) as Node;
-            el.position = pos(from_start(n.OpenTag[0] as IToken), closeTag.position.end);
+            if (n.closetag) {
+                const closeTag = this.visit(n.closetag[0] as CstNode) as Node;
+                el.position = pos(start(n.OpenTag[0] as IToken), closeTag.position.end);
+            } else {
+                console.log("didn't get expected closeTag", n);
+                throw new Error("fail");
+                
+            }
         }
        
         return el as TagType
@@ -182,8 +196,8 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         const values = n.quoted_attribute_value ? this.visit(n.quoted_attribute_value[0] as CstNode) : []
 
         const hasQuotes = !(n.quoted_attribute_value?.[0] as CstNode).children.unquoted_value
-        const startPosition = from_start(n.AttrText[0] as IToken)
-        const endPosition = n.Equal ? offset_col((values[values.length - 1] as Node).position?.end, hasQuotes ? 1 : 0) : from_end(n.AttrText[0] as IToken, 1);
+        const startPosition = start(n.AttrText[0] as IToken)
+        const endPosition = values.length ? offset_col((values[values.length - 1] as Node).position?.end, hasQuotes ? 1 : 0) : after(n.AttrText[0] as IToken);
         
         if (colonIndex >= 0) {
             return {
@@ -221,15 +235,15 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
     }
 
     unquoted_value(n: CstChildrenDictionary):(Text|SvelteExpression)[] {
-        return n.noquote_string_or_expression?.map(c => this.visit(c as CstNode))
+        return n.noquote_string_or_expression?.map(c => this.visit(c as CstNode)) ?? []
     }
 
     double_quoted_value(n: CstChildrenDictionary):(Text|SvelteExpression)[] {
-        return n.dquote_string_or_expression?.map(c => this.visit(c as CstNode))
+        return n.dquote_string_or_expression?.map(c => this.visit(c as CstNode)) ?? []
     }
 
     single_quoted_value(n: CstChildrenDictionary):(Text|SvelteExpression)[] {
-        return n.squote_string_or_expression?.map(c => this.visit(c as CstNode))
+        return n.squote_string_or_expression?.map(c => this.visit(c as CstNode)) ?? []
     }
     
     squote_string_or_expression(n: CstChildrenDictionary):Text|SvelteExpression {
@@ -246,14 +260,14 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
 
     expression(n: CstChildrenDictionary): SvelteExpression {
         const expr =  expressionNode(n.ExprContent[0] as IToken);
-        expr.position = pos(from_start(n.LCurly[0] as IToken), from_end(n.RCurly[0] as IToken, 1))
+        expr.position = pos(start(n.LCurly[0] as IToken), after(n.RCurly[0] as IToken))
         return expr;
     }
 
     closetag(n: CstChildrenDictionary): Node {
         return {
             type: "__closeTag",
-            position: pos(from_start(n.CloseTag[0] as IToken), from_end(n.RAngle[0] as IToken))
+            position: pos(start(n.CloseTag[0] as IToken), after(n.RAngle[0] as IToken))
         }
     }
 }

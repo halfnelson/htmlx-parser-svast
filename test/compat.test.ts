@@ -11,6 +11,7 @@ const inputs = fs
 		f => f.isDirectory()
 	)
 	.map((f) => f.name)
+    .filter(n => !n.match(/\.skip$/))
 
 
 import { suite } from 'uvu';
