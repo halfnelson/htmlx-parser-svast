@@ -1,5 +1,5 @@
-import { CstChildrenDictionary, CstElement, CstNode, CstNodeLocation, IToken, ITokenConfig } from 'chevrotain';
-import { BranchingBlock, Root, SvelteComponent, SvelteElement, SvelteExpression, VoidBlock, Text, SvelteMeta, Property, Directive, Branch, Literal, Point, Position, Node } from 'svast'
+import { CstChildrenDictionary,  CstNode,  IToken } from 'chevrotain';
+import { BranchingBlock, Root, SvelteComponent, SvelteElement, SvelteExpression, VoidBlock, Text, SvelteMeta, Property, Directive, Branch, Literal, Point, Position, Node, Comment, SvelteScript, SvelteStyle } from 'svast'
 
 import { HtmlxParser } from './parser';
 
@@ -49,10 +49,12 @@ function end(node: IToken) {
 }
 
 function after(node: IToken) {
+    const imgLength = node.image.length;
+    const endsWithNewline = (imgLength && node.image[imgLength - 1] == '\n');
     return {
         offset: node.endOffset + 1,
-        column: node.image == '\n' ? 1 : node.endColumn + 1,
-        line: node.image == '\n' ? node.endLine + 1 : node.endLine
+        column: endsWithNewline ? 1 : node.endColumn + 1,
+        line: endsWithNewline ? node.endLine + 1 : node.endLine
     }
 }
 
@@ -63,7 +65,7 @@ function pos(start: Point, end: Point): Position {
     }
 }
 
-type TagChild = SvelteComponent | SvelteElement | SvelteMeta | SvelteExpression | BranchingBlock | VoidBlock | Text 
+type TagChild = SvelteComponent | SvelteElement | SvelteMeta | SvelteExpression | BranchingBlock | VoidBlock | Text | SvelteScript | SvelteStyle | Comment
 
 type TagType = SvelteComponent | SvelteElement | SvelteMeta
 
@@ -97,7 +99,11 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         if (n.void_block) return this.visit(n.void_block[0] as CstNode);
         if (n.branch_block) return this.visit(n.branch_block[0] as CstNode);
         if (n.expression) return this.visit(n.expression[0] as CstNode);
-        return null
+        if (n.script_tag) return this.visit(n.script_tag[0] as CstNode);
+        if (n.style_tag) return this.visit(n.style_tag[0] as CstNode);
+        if (n.comment_tag) return this.visit(n.comment_tag[0] as CstNode);
+        console.log(n);
+        throw new Error("Unknown tag child")
     }
 
     tag(n: CstChildrenDictionary): TagType {
@@ -131,10 +137,53 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         return el as TagType
     }
 
+    script_tag(n: CstChildrenDictionary): SvelteScript {
+        let contentAndTagToken = (n.ScriptContentAndEndTag[0] as IToken);
+        const endTagLength = "</script>".length;
+        return {
+            type: "svelteScript",
+            properties: this.visit(n.attribute_list[0] as CstNode),
+            selfClosing: false,
+            tagName: 'script',
+            children: [{
+                type: "text",
+                value: contentAndTagToken.image.substring(0,contentAndTagToken.image.length - endTagLength),
+                position: pos(start(contentAndTagToken), offset_col(after(contentAndTagToken), -endTagLength))
+            }],
+            position: pos(start(n.OpenScriptTag[0] as IToken), after(contentAndTagToken)),
+        }
+    }
+
+    style_tag(n: CstChildrenDictionary): SvelteStyle {
+        let contentAndTagToken = (n.StyleContentAndEndTag[0] as IToken);
+        const endTagLength = "</style>".length;
+        return {
+            type: "svelteStyle",
+            properties: this.visit(n.attribute_list[0] as CstNode),
+            selfClosing: false,
+            tagName: 'style',
+            children: [{
+                type: "text",
+                value: contentAndTagToken.image.substring(0,contentAndTagToken.image.length - endTagLength),
+                position: pos(start(contentAndTagToken), offset_col(after(contentAndTagToken), -endTagLength))
+            }],
+            position: pos(start(n.OpenStyleTag[0] as IToken), after(contentAndTagToken)),
+        }
+    }
+
+    comment_tag(n: CstChildrenDictionary): Comment {
+        const commentToken = n.CommentTag[0] as IToken;
+        return {
+            type: "comment",
+            value: commentToken.image.substring('<!--'.length, commentToken.image.length - '-->'.length),
+            position: pos(start(commentToken), after(commentToken))
+        }
+    }
+
     void_block(n: CstChildrenDictionary): VoidBlock {
         return {    
             type: "svelteVoidBlock",
-            name: (n.VoidBlock[0] as IToken).image,
+            name: (n.VoidBlock[0] as IToken).image.substring(1),
             expression: expressionNode(n.ExprContent[0] as IToken)
         } as VoidBlock
     }
