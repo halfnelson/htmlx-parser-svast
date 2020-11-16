@@ -1,3 +1,6 @@
+### 0.1.2 - 2020-11-16
+ - Improve the expression parser
+
 ### 0.1.1 - 2020-11-16
 - Add support for self closing script and style tags
 - Add correct handling for textarea tags
