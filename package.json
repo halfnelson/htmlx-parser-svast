@@ -1,6 +1,6 @@
 {
   "name": "htmlx-parser-svast",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Htmlx parser which generates unist/svast AST",
   "main": "dist/index.cjs.js",
   "module": "dist/index.es.js",
