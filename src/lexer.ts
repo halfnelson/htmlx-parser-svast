@@ -6,13 +6,19 @@ export const WhiteSpace = createToken({ name: "WhiteSpace", pattern: /\s+/ });
 export const TextContent = createToken({ name: "TextContent", pattern: /[^<\{]+/ });
 export const CommentTag = createToken({ name: "CommentTag", pattern: /<\!\-\-[\s\S]*?\-\->/ })
 
-export const OpenScriptTag = createToken({ name: "OpenScriptTag", pattern: /<script/, push_mode: "script_tag_mode"})
+export const OpenScriptTag = createToken({ name: "OpenScriptTag", pattern: /<s[Cc][Rr][Ii][Pp][Tt]/, push_mode: "script_tag_mode"})
 export const ScriptRAngle = createToken({ name: "ScriptRAngle", pattern: />/, pop_mode: true, push_mode: "script_content_mode" });
-export const ScriptContentAndEndTag = createToken({ name: "ScriptContentAndEndTag", pattern: /[\s\S]*<\/script>/, pop_mode: true })
+export const ScriptContentAndEndTag = createToken({ name: "ScriptContentAndEndTag", pattern: /[\s\S]*<\/script>/i, pop_mode: true })
 
-export const OpenStyleTag = createToken({ name: "OpenStyleTag", pattern: /<style/, push_mode: "style_tag_mode"})
+export const OpenStyleTag = createToken({ name: "OpenStyleTag", pattern: /<s[Tt][Yy][Ll][Ee]/, push_mode: "style_tag_mode"})
 export const StyleRAngle = createToken({ name: "StyleRAngle", pattern: />/, pop_mode: true, push_mode: "style_content_mode" });
-export const StyleContentAndEndTag = createToken({ name: "StyleContentAndEndTag", pattern: /[\s\S]*<\/style>/, pop_mode: true })
+export const StyleContentAndEndTag = createToken({ name: "StyleContentAndEndTag", pattern: /[\s\S]*<\/style>/i, pop_mode: true })
+
+export const OpenTextAreaTag = createToken({ name: "OpenTextAreaTag", pattern: /<textarea/, push_mode: "textarea_tag_mode"})
+export const TextAreaRAngle = createToken({ name: "TextAreaRAngle", pattern: />/, pop_mode: true, push_mode: "textarea_content_mode" });
+export const TextAreaContentAndEndTag = createToken({ name: "TextAreaContentAndEndTag", pattern: /[\s\S]*<\/textarea>/, pop_mode: true })
+
+export const TextModeTagSelfClose = createToken({ name: "TextModeTagSelfClose", pattern: /\/>/, pop_mode: true});
 
 export const OpenTag = createToken({ name: "OpenTag", pattern: /<[a-zA-Z0-9:\-]+/, push_mode: "tag_mode" });
 export const CloseTag = createToken({ name: "CloseTag", pattern: /<\/[a-zA-Z0-9:\-]+/, push_mode: "tag_mode" });
@@ -51,7 +57,8 @@ export const svelteTokens = [RAngle, Colon, DQuote, DQuotedString, DQuoteEnd,
     VoidBlock, BranchBlockOpen, BranchBlockContinue, BranchBlockEnd,
     OpenScriptTag, ScriptRAngle, ScriptContentAndEndTag,
     OpenStyleTag, StyleRAngle, StyleContentAndEndTag,
-    CommentTag
+    OpenTextAreaTag, TextAreaRAngle, TextAreaContentAndEndTag,
+    TextModeTagSelfClose,  CommentTag
 ]
 
 const attributeTokens = [
@@ -73,6 +80,7 @@ export const HtmlxLexer = new Lexer({
             CommentTag,
             OpenStyleTag,
             OpenScriptTag,
+            OpenTextAreaTag,
             OpenTag,
             CloseTag
         ],
@@ -84,6 +92,7 @@ export const HtmlxLexer = new Lexer({
         ],
         script_tag_mode: [
             ...attributeTokens,
+            TextModeTagSelfClose,
             ScriptRAngle
         ],
         script_content_mode: [
@@ -91,10 +100,19 @@ export const HtmlxLexer = new Lexer({
         ],
         style_tag_mode: [
             ...attributeTokens,
+            TextModeTagSelfClose,
             StyleRAngle
         ],
         style_content_mode: [
             StyleContentAndEndTag
+        ],
+        textarea_tag_mode: [
+            ...attributeTokens,
+            TextModeTagSelfClose,
+            TextAreaRAngle
+        ],
+        textarea_content_mode: [
+            TextAreaContentAndEndTag
         ],
         expr_mode: [
             WhiteSpace,

@@ -2,7 +2,7 @@ import { CstParser } from "chevrotain";
 import {
 	AttrText, BranchBlockContinue, BranchBlockEnd, BranchBlockOpen, CloseTag, DQuote, DQuotedString, DQuoteEnd, Equal, ExprContent, LCurly,
 	OpenTag, Pipe, RAngle, RCurly, Slash, SQuote, SQuotedString,
-	SQuoteEnd, HtmlxLexer, svelteTokens, TextContent, VoidBlock, WhiteSpace, ScriptRAngle, ScriptContentAndEndTag, OpenScriptTag, OpenStyleTag, StyleRAngle, StyleContentAndEndTag, CommentTag
+	SQuoteEnd, HtmlxLexer, svelteTokens, TextContent, VoidBlock, WhiteSpace, ScriptRAngle, ScriptContentAndEndTag, OpenScriptTag, OpenStyleTag, StyleRAngle, StyleContentAndEndTag, CommentTag, OpenTextAreaTag, TextAreaRAngle, TextAreaContentAndEndTag, TextModeTagSelfClose
 } from "./lexer";
 
 
@@ -65,6 +65,7 @@ export class HtmlxParser extends CstParser {
 			{ ALT: () => this.SUBRULE(this.tag) },
 			{ ALT: () => this.SUBRULE(this.script_tag) },
 			{ ALT: () => this.SUBRULE(this.style_tag) },
+			{ ALT: () => this.SUBRULE(this.textarea_tag)},
 			{ ALT: () => this.SUBRULE(this.comment_tag) },
 			{ ALT: () => this.SUBRULE(this.void_block) },
 			{ ALT: () => this.SUBRULE(this.branch_block) },
@@ -122,16 +123,45 @@ export class HtmlxParser extends CstParser {
 		this.CONSUME(OpenScriptTag)
 		this.SUBRULE(this.attribute_list)
 		this.OPTION(() => this.CONSUME(WhiteSpace))
-		this.CONSUME(ScriptRAngle)
-		this.CONSUME(ScriptContentAndEndTag)
+		this.OR([
+			{ ALT: () => {
+				this.CONSUME(ScriptRAngle)
+				this.CONSUME(ScriptContentAndEndTag)
+			}},
+			{ ALT: () => 
+				this.CONSUME(TextModeTagSelfClose)
+			}
+		])
 	})
 
 	style_tag = this.RULE("style_tag", () => {
 		this.CONSUME(OpenStyleTag)
 		this.SUBRULE(this.attribute_list)
 		this.OPTION(() => this.CONSUME(WhiteSpace))
-		this.CONSUME(StyleRAngle)
-		this.CONSUME(StyleContentAndEndTag)
+		this.OR([
+			{ ALT: () => {
+				this.CONSUME(StyleRAngle)
+				this.CONSUME(StyleContentAndEndTag)
+			}},
+			{ ALT: () => 
+				this.CONSUME(TextModeTagSelfClose)
+			}
+		])
+	})
+
+	textarea_tag = this.RULE("textarea_tag", () => {
+		this.CONSUME(OpenTextAreaTag)
+		this.SUBRULE(this.attribute_list)
+		this.OPTION(() => this.CONSUME(WhiteSpace))
+		this.OR([
+			{ ALT: () => {
+				this.CONSUME(TextAreaRAngle)
+				this.CONSUME(TextAreaContentAndEndTag)
+			}},
+			{ ALT: () => 
+				this.CONSUME(TextModeTagSelfClose)
+			}
+		])
 	})
 
 	comment_tag = this.RULE("comment_tag", () => {
@@ -192,7 +222,7 @@ export class HtmlxParser extends CstParser {
 
 	attribute_list = this.RULE("attribute_list", () => {
 		this.MANY({
-			GATE: () => this.LA(2).image != '/' && this.LA(2).image != '>',  // Guard against going down this path for `lastAttribute=5/>`
+			GATE: () => this.LA(2).image != '/' && this.LA(2).image != '>' && this.LA(2).tokenType != TextModeTagSelfClose,  // Guard against going down this path for `lastAttribute=5/>`
 			DEF: () => {
 				this.OPTION(() => this.CONSUME(WhiteSpace))
 				this.SUBRULE(this.attribute_or_expression)

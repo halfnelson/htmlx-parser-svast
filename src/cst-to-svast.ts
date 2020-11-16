@@ -1,4 +1,4 @@
-import { CstChildrenDictionary,  CstNode,  IToken } from 'chevrotain';
+import { CstChildrenDictionary, CstNode, IToken } from 'chevrotain';
 import { BranchingBlock, Root, SvelteComponent, SvelteElement, SvelteExpression, VoidBlock, Text, SvelteMeta, Property, Directive, Branch, Literal, Point, Position, Node, Comment, SvelteScript, SvelteStyle } from 'svast'
 import { HtmlxParser } from './parser';
 import { pos, after, offset_col, start } from './util';
@@ -19,13 +19,13 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
     // root := tag_content
     root(n: CstChildrenDictionary): Root {
         const children = this.visit(n.tag_content[0] as CstNode)
-        return { 
+        return {
             type: "root",
             children: children,
-            position: children.length == 0 
-                ? pos({column: 0, line: 0, offset: 0}, {column: 0, line: 0, offset: 0}) 
+            position: children.length == 0
+                ? pos({ column: 0, line: 0, offset: 0 }, { column: 0, line: 0, offset: 0 })
                 : pos(children[0].position.start, children[children.length - 1].position.end)
-        } 
+        }
     }
 
     // tag_content := tag_child*
@@ -34,7 +34,7 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
     }
 
     // tag_child := tag | text | void_block | branch_block | expression
-    tag_child(n: CstChildrenDictionary): TagChild  {
+    tag_child(n: CstChildrenDictionary): TagChild {
         if (n.tag) return this.visit(n.tag[0] as CstNode);
         if (n.text) return this.visit(n.text[0] as CstNode);
         if (n.void_block) return this.visit(n.void_block[0] as CstNode);
@@ -46,7 +46,7 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
     }
 
     tag(n: CstChildrenDictionary): TagType {
-        var el:Partial<TagType> = {}
+        var el: Partial<TagType> = {}
         let name = (n.OpenTag[0] as IToken).image.substr(1);
         let colonIdx = name.indexOf(':')
         if (colonIdx >= 0) {
@@ -58,14 +58,14 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         }
         el.selfClosing = !!n.SelfClose;
         el.properties = this.visit(n.attribute_list[0] as CstNode)
-        el.children = n.tag_content ?  this.visit(n.tag_content[0] as CstNode) : []
+        el.children = n.tag_content ? this.visit(n.tag_content[0] as CstNode) : []
 
         if (el.selfClosing) {
             el.position = pos(start(n.OpenTag[0] as IToken), after(n.SelfClose[0] as IToken))
         } else {
             if (!n.closetag) {
                 //this might happen if the parser tries error recovery.
-                el.position = pos(start(n.OpenTag[0] as IToken), el.children.length ? el.children[el.children.length-1].position.end : after(n.RAngle[0] as IToken))
+                el.position = pos(start(n.OpenTag[0] as IToken), el.children.length ? el.children[el.children.length - 1].position.end : after(n.RAngle[0] as IToken))
             } else {
                 const closeTag = this.visit(n.closetag[0] as CstNode) as Node;
                 el.position = pos(start(n.OpenTag[0] as IToken), closeTag.position.end);
@@ -75,38 +75,90 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
     }
 
     script_tag(n: CstChildrenDictionary): SvelteScript {
-        let contentAndTagToken = (n.ScriptContentAndEndTag[0] as IToken);
-        const endTagLength = "</script>".length;
-        return {
-            type: "svelteScript",
-            properties: this.visit(n.attribute_list[0] as CstNode),
-            selfClosing: false,
-            tagName: 'script',
-            children: [{
-                type: "text",
-                value: contentAndTagToken.image.substring(0,contentAndTagToken.image.length - endTagLength),
-                position: pos(start(contentAndTagToken), offset_col(after(contentAndTagToken), -endTagLength))
-            }],
-            position: pos(start(n.OpenScriptTag[0] as IToken), after(contentAndTagToken)),
+
+        if (n.ScriptContentAndEndTag) {
+            let contentAndTagToken = (n.ScriptContentAndEndTag[0] as IToken);
+            const endTagLength = "</script>".length;
+            return {
+                type: "svelteScript",
+                properties: this.visit(n.attribute_list[0] as CstNode),
+                selfClosing: false,
+                tagName: 'script',
+                children: [{
+                    type: "text",
+                    value: contentAndTagToken.image.substring(0, contentAndTagToken.image.length - endTagLength),
+                    position: pos(start(contentAndTagToken), offset_col(after(contentAndTagToken), -endTagLength))
+                }],
+                position: pos(start(n.OpenScriptTag[0] as IToken), after(contentAndTagToken)),
+            }
+        } else {
+            return {
+                type: "svelteScript",
+                properties: this.visit(n.attribute_list[0] as CstNode),
+                selfClosing: true,
+                tagName: 'script',
+                children: [],
+                position: pos(start(n.OpenScriptTag[0] as IToken), after(n.TextModeTagSelfClose[0] as IToken)),
+            }
         }
     }
 
     style_tag(n: CstChildrenDictionary): SvelteStyle {
-        let contentAndTagToken = (n.StyleContentAndEndTag[0] as IToken);
-        const endTagLength = "</style>".length;
-        return {
-            type: "svelteStyle",
-            properties: this.visit(n.attribute_list[0] as CstNode),
-            selfClosing: false,
-            tagName: 'style',
-            children: [{
-                type: "text",
-                value: contentAndTagToken.image.substring(0,contentAndTagToken.image.length - endTagLength),
-                position: pos(start(contentAndTagToken), offset_col(after(contentAndTagToken), -endTagLength))
-            }],
-            position: pos(start(n.OpenStyleTag[0] as IToken), after(contentAndTagToken)),
+        if (n.StyleContentAndEndTag) {
+            let contentAndTagToken = (n.StyleContentAndEndTag[0] as IToken);
+            const endTagLength = "</style>".length;
+            return {
+                type: "svelteStyle",
+                properties: this.visit(n.attribute_list[0] as CstNode),
+                selfClosing: false,
+                tagName: 'style',
+                children: [{
+                    type: "text",
+                    value: contentAndTagToken.image.substring(0, contentAndTagToken.image.length - endTagLength),
+                    position: pos(start(contentAndTagToken), offset_col(after(contentAndTagToken), -endTagLength))
+                }],
+                position: pos(start(n.OpenStyleTag[0] as IToken), after(contentAndTagToken)),
+            }
+        } else {
+            return {
+                type: "svelteStyle",
+                properties: this.visit(n.attribute_list[0] as CstNode),
+                selfClosing: true,
+                tagName: 'style',
+                children: [],
+                position: pos(start(n.OpenStyleTag[0] as IToken), after(n.TextModeTagSelfClose[0] as IToken)),
+            }
         }
     }
+
+    textarea_tag(n: CstChildrenDictionary): SvelteElement {
+        if (n.TextAreaContentAndEndTag) {
+            let contentAndTagToken = (n.TextAreaContentAndEndTag[0] as IToken);
+            const endTagLength = "</textarea>".length;
+            return {
+                type: "svelteElement",
+                properties: this.visit(n.attribute_list[0] as CstNode),
+                selfClosing: false,
+                tagName: 'textarea',
+                children: [{
+                    type: "text",
+                    value: contentAndTagToken.image.substring(0, contentAndTagToken.image.length - endTagLength),
+                    position: pos(start(contentAndTagToken), offset_col(after(contentAndTagToken), -endTagLength))
+                }],
+                position: pos(start(n.OpenTextAreaTag[0] as IToken), after(contentAndTagToken)),
+            }
+        } else {
+            return {
+                type: "svelteElement",
+                properties: this.visit(n.attribute_list[0] as CstNode),
+                selfClosing: true,
+                tagName: 'textarea',
+                children: [],
+                position: pos(start(n.OpenTextAreaTag[0] as IToken), after(n.TextModeTagSelfClose[0] as IToken)),
+            }
+        }
+    }
+
 
     comment_tag(n: CstChildrenDictionary): Comment {
         const commentToken = n.CommentTag[0] as IToken;
@@ -118,7 +170,7 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
     }
 
     void_block(n: CstChildrenDictionary): VoidBlock {
-        return {    
+        return {
             type: "svelteVoidBlock",
             name: (n.VoidBlock[0] as IToken).image.substring(1),
             expression: expressionNode(n.ExprContent[0] as IToken),
@@ -172,7 +224,7 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
     attribute_or_expression(n: CstChildrenDictionary): (Property | Directive) {
         if (n.attribute) return this.visit(n.attribute[0] as CstNode)
         if (n.expression) {
-            const expr:SvelteExpression = this.visit(n.expression[0] as CstNode)
+            const expr: SvelteExpression = this.visit(n.expression[0] as CstNode)
             return {
                 type: "svelteProperty",
                 value: [expr],
@@ -192,12 +244,12 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         const hasQuotes = !(n.quoted_attribute_value?.[0] as CstNode).children.unquoted_value
         const startPosition = start(n.AttrText[0] as IToken)
         const endPosition = values.length ? offset_col((values[values.length - 1] as Node).position?.end, hasQuotes ? 1 : 0) : after(n.AttrText[0] as IToken);
-        
+
         if (colonIndex >= 0) {
             return {
                 type: "svelteDirective",
                 name: name.substring(0, colonIndex),
-                specifier: name.substr(colonIndex+1),
+                specifier: name.substr(colonIndex + 1),
                 shorthand: "none",
                 modifiers: this.visit(n.modifier_list[0] as CstNode),
                 value: n.quoted_attribute_value ? this.visit(n.quoted_attribute_value[0] as CstNode) : [],
@@ -222,38 +274,38 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
         })) ?? []
     }
 
-    quoted_attribute_value(n: CstChildrenDictionary):(Text|SvelteExpression)[] {
+    quoted_attribute_value(n: CstChildrenDictionary): (Text | SvelteExpression)[] {
         if (n.double_quoted_value) return this.visit(n.double_quoted_value[0] as CstNode);
         if (n.single_quoted_value) return this.visit(n.single_quoted_value[0] as CstNode);
         if (n.unquoted_value) return this.visit(n.unquoted_value[0] as CstNode);
     }
 
-    unquoted_value(n: CstChildrenDictionary):(Text|SvelteExpression)[] {
+    unquoted_value(n: CstChildrenDictionary): (Text | SvelteExpression)[] {
         return n.noquote_string_or_expression?.map(c => this.visit(c as CstNode)) ?? []
     }
 
-    double_quoted_value(n: CstChildrenDictionary):(Text|SvelteExpression)[] {
+    double_quoted_value(n: CstChildrenDictionary): (Text | SvelteExpression)[] {
         return n.dquote_string_or_expression?.map(c => this.visit(c as CstNode)) ?? []
     }
 
-    single_quoted_value(n: CstChildrenDictionary):(Text|SvelteExpression)[] {
+    single_quoted_value(n: CstChildrenDictionary): (Text | SvelteExpression)[] {
         return n.squote_string_or_expression?.map(c => this.visit(c as CstNode)) ?? []
     }
-    
-    squote_string_or_expression(n: CstChildrenDictionary):Text|SvelteExpression {
+
+    squote_string_or_expression(n: CstChildrenDictionary): Text | SvelteExpression {
         return n.expression ? this.visit(n.expression[0] as CstNode) : textNode(n.SQuoteString[0] as IToken)
     }
 
-    dquote_string_or_expression(n: CstChildrenDictionary):Text|SvelteExpression {
+    dquote_string_or_expression(n: CstChildrenDictionary): Text | SvelteExpression {
         return n.expression ? this.visit(n.expression[0] as CstNode) : textNode(n.DQuoteString[0] as IToken)
     }
 
-    noquote_string_or_expression(n: CstChildrenDictionary):Text|SvelteExpression {
+    noquote_string_or_expression(n: CstChildrenDictionary): Text | SvelteExpression {
         return n.expression ? this.visit(n.expression[0] as CstNode) : textNode(n.AttrText[0] as IToken)
     }
 
     expression(n: CstChildrenDictionary): SvelteExpression {
-        const expr =  expressionNode(n.ExprContent[0] as IToken);
+        const expr = expressionNode(n.ExprContent[0] as IToken);
         expr.position = pos(start(n.LCurly[0] as IToken), after(n.RCurly[0] as IToken))
         return expr;
     }
@@ -282,7 +334,7 @@ function expressionNode(value: IToken): SvelteExpression {
     }
 }
 
-export function cstToSvast(root :CstNode): Root {
+export function cstToSvast(root: CstNode): Root {
     const visitor = new HtmlxVisitor();
     return visitor.visit(root) as Root;
 }
