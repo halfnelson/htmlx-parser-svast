@@ -1,6 +1,9 @@
-import { createToken, Lexer } from 'chevrotain'
+import { createToken, CustomPatternMatcherFunc, CustomPatternMatcherReturn, Lexer } from 'chevrotain'
 
 export const WhiteSpace = createToken({ name: "WhiteSpace", pattern: /\s+/ });
+
+
+
 
 // Tag Children
 export const TextContent = createToken({ name: "TextContent", pattern: /[^<\{]+/ });
@@ -42,7 +45,29 @@ export const RAngle = createToken({ name: "RAngle", pattern: />/, pop_mode: true
 
 // Expression
 export const LCurly = createToken({ name: "LCurly", pattern: /\{/, push_mode: "expr_mode" });
-export const ExprContent = createToken({ name: "ExprContent", pattern: /[^\}\@\:\/\x23](\{[\s\S]*?\}|[^\}])*/ });
+
+const expressionStartChars = []
+for(let j=0; j < 128; j++) {
+    const char = String.fromCharCode(j);
+    switch (char) {
+        //we don't start with these
+        case '@':
+        case ':':
+        case '/':
+        case '#':
+        //we dont start with whitespace
+        case "\r":
+        case "\n":
+        case "\t":
+        case " ":
+           continue;
+    }
+    expressionStartChars.push(char)
+}
+
+// we use a custom pattern due to nesting etc https://sap.github.io/chevrotain/docs/guide/custom_token_patterns.html#usage
+export const ExprContent = createToken({ name: "ExprContent", pattern: {exec: matchExpression as any}, start_chars_hint:  expressionStartChars, line_breaks: true});
+
 export const VoidBlock = createToken({ name: "VoidBlock", pattern: /\@[^\s\}]+/ });
 export const BranchBlockOpen = createToken({ name: "BranchBlockOpen", pattern: /\x23[^\s\}]+/  });
 export const BranchBlockContinue = createToken({ name: "BranchBlockContinue", pattern: /\:[^\s\}]+/ });
@@ -135,3 +160,67 @@ export const HtmlxLexer = new Lexer({
         ],
     }
 });
+
+
+
+
+// We want to ignore balanced braces, and instances of braces withing strings
+
+export function matchExpression(text, startOffset) {
+    const quoteStack = []
+    let braceDepth = 0
+    let endOffset = startOffset
+    const textLength = text.length;
+    let char = text[endOffset]
+
+    //we don't want to match if it starts with @ : / # as these are matched by other rules
+    switch (char) {
+        case '@':
+        case ':':
+        case '/':
+        case '#':
+            return null;
+    }
+
+
+    while (braceDepth >= 0 && endOffset < textLength) {
+        char = text[endOffset]
+        switch (char) {
+            case '{': 
+                braceDepth++;
+                break;
+            case '}':
+                braceDepth--;
+                break;
+            case '"':
+                do {
+                    endOffset += (char == '\\' ? 2 : 1)
+                    char = text[endOffset]
+                } while (char != '"' && endOffset < textLength)
+                break;
+            case "'":
+                do {
+                    endOffset += (char == '\\' ? 2 : 1)
+                    char = text[endOffset]
+                } while (char != "'" && endOffset < textLength)
+                break;
+            case "`":
+                do {
+                    endOffset += (char == '\`' ? 2 : 1)
+                    char = text[endOffset]
+                } while (char != "`" && endOffset < textLength)
+                break;
+        }
+        endOffset++
+        
+    }
+  
+    // No match, must return null to conform with the RegExp.prototype.exec signature
+    if (endOffset-1 === startOffset) {
+      return null
+    } else {
+      const matchedString = text.substring(startOffset, endOffset-1)
+      // according to the RegExp.prototype.exec API the first item in the returned array must be the whole matched string.
+      return [matchedString]
+    }
+}
