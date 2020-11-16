@@ -5,6 +5,32 @@ import {
 	SQuoteEnd, HtmlxLexer, svelteTokens, TextContent, VoidBlock, WhiteSpace, ScriptRAngle, ScriptContentAndEndTag, OpenScriptTag, OpenStyleTag, StyleRAngle, StyleContentAndEndTag, CommentTag
 } from "./lexer";
 
+
+// https://www.w3.org/TR/html51/syntax.html#optional-tags
+const autoStopTags = {
+	'li': ['li'],
+	'dt': ['dt','dd'],
+	'dd': ['dd','dt'],
+	'p': ['address', 'article', 'aside', 'blockquote', 'details', 'div', 'dl', 'fieldset', 'figcaption', 'figure','footer',
+		  'form','h1','h2','h3','h4','h5','h6','header', 'hr','main', 'menu','nav','ol','p','pre','section','table','ul'],
+	'rt': ['rt', 'rp'],
+	'rp': ['rt', 'rp'],
+	'optgroup': [ 'optgroup'],
+	'option': ['option', 'optgroup'],
+	'thead': ['tbody', 'tfoot'],
+	'tbody': ['tbody', 'tfoot'],
+	'tfoot': ['tbody'],
+	'tr': ['tr'],
+	'td': ['td','th'],
+	'th': ['td','th']
+}
+
+//https://www.w3.org/TR/html51/syntax.html#void-elements
+const voidTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'keygen', 'link', 'menuitem', 'meta', 'param', 'source', 'track', 'wbr']
+
+
+
+
 export class HtmlxParser extends CstParser {
 	constructor() {
 		super(svelteTokens, {
@@ -20,10 +46,16 @@ export class HtmlxParser extends CstParser {
 		this.SUBRULE(this.tag_content)
 	)
 
-	tag_content = this.RULE("tag_content", () =>
+	tag_content = this.RULE("tag_content", (stopTags: string[]) =>
 		this.MANY({
 			// Guard against going down this path for branch_block continuations or endings
-			GATE: () => this.LA(1).tokenType != LCurly || (this.LA(2).tokenType != BranchBlockContinue && this.LA(2).tokenType != BranchBlockEnd),
+			GATE: () => {
+				//branch block continue, or branch block end stops the current content
+				if (this.LA(2).tokenType == BranchBlockContinue || this.LA(2).tokenType == BranchBlockEnd) return false;
+				//stop tags stop the current tag content (example <option> followed by other <option>)
+				if (stopTags && this.LA(1).tokenType == OpenTag && stopTags.indexOf(this.LA(1).image.substring(1).toLowerCase()) >= 0) return false;
+				return true;
+			},
 			DEF: () => this.SUBRULE(this.tag_child)
 		})
 	);
@@ -42,23 +74,47 @@ export class HtmlxParser extends CstParser {
 	)
 
 	tag = this.RULE("tag", () => {
-		this.CONSUME(OpenTag)
+		let tagToken = this.CONSUME(OpenTag);
+		const tagName = tagToken.image.substring(1).toLowerCase();
+		let closeTags: string[] | undefined = autoStopTags[tagName]
+
+		let isVoid = voidTags.indexOf(tagName) >= 0;
+
 		this.SUBRULE(this.attribute_list)
 		this.OPTION(() => this.CONSUME(WhiteSpace))
 		this.OR([
 			{
 				ALT: () => {
 					this.CONSUME(Slash)
-					this.CONSUME(RAngle)
+					this.CONSUME(RAngle, { LABEL: "SelfClose"})
 				}
 			},
 			{
+				GATE: () => isVoid,
 				ALT: () => {
-					this.CONSUME2(RAngle)
-					this.SUBRULE(this.tag_content)
+					this.CONSUME2(RAngle, { LABEL: "SelfClose"})
+				}
+			},
+			{
+				GATE: () => !closeTags && !isVoid,  
+				ALT: () => {
+					this.CONSUME3(RAngle)
+					this.SUBRULE(this.tag_content,{ ARGS: [closeTags] })
 					this.SUBRULE(this.closetag)
 				}
+			},
+			{
+				GATE: () => !!closeTags && !isVoid,  
+				ALT: () => {
+					this.CONSUME4(RAngle)
+					this.SUBRULE2(this.tag_content,{ ARGS: [closeTags] })
+					this.OPTION2({
+						GATE: () => this.LA(1).tokenType == CloseTag && this.LA(1).image.toLowerCase() == `</${tagName}`, //this might be the end of our parent tag
+						DEF: () => this.SUBRULE2(this.closetag)
+					})
+				}
 			}
+
 		])
 	})
 
@@ -215,6 +271,12 @@ export class HtmlxParser extends CstParser {
 
 const existingTrimRight = (String.prototype.trimEnd || String.prototype.trimRight);
 const trimRight = existingTrimRight ? (s: String) => existingTrimRight.apply(s) : (s: String) => ('*'+s).trim().substring(1);
+
+
+
+
+
+
 
 export var parser: HtmlxParser = new HtmlxParser();
 

@@ -56,17 +56,21 @@ class HtmlxVisitor extends BaseHtmlxLVisitor {
             el.type = (name[0].toLowerCase() == name[0]) ? "svelteElement" : "svelteComponent"
             el.tagName = name
         }
-        el.selfClosing = !!n.Slash;
+        el.selfClosing = !!n.SelfClose;
         el.properties = this.visit(n.attribute_list[0] as CstNode)
         el.children = n.tag_content ?  this.visit(n.tag_content[0] as CstNode) : []
 
         if (el.selfClosing) {
-            el.position = pos(start(n.OpenTag[0] as IToken), after(n.RAngle[0] as IToken))
+            el.position = pos(start(n.OpenTag[0] as IToken), after(n.SelfClose[0] as IToken))
         } else {
-            const closeTag = this.visit(n.closetag[0] as CstNode) as Node;
-            el.position = pos(start(n.OpenTag[0] as IToken), closeTag.position.end);
+            if (!n.closetag) {
+                //this might happen if the parser tries error recovery.
+                el.position = pos(start(n.OpenTag[0] as IToken), el.children.length ? el.children[el.children.length-1].position.end : after(n.RAngle[0] as IToken))
+            } else {
+                const closeTag = this.visit(n.closetag[0] as CstNode) as Node;
+                el.position = pos(start(n.OpenTag[0] as IToken), closeTag.position.end);
+            }
         }
-       
         return el as TagType
     }
 

@@ -23,4 +23,16 @@ parser('returns parseErrors', () => {
     assert.ok(res.parse_errors.length > 0);
 })
 
+parser('handles self closing tags', () => {
+    const res = parseHtmlxToCst('<article><p>test1<p>test2</article>')
+    assert.ok(res)
+    assert.equal(res.parse_errors, [])
+})
+
+parser('handles void tags', () => {
+    const res = parseHtmlxToCst('<input><area><hr>')
+    assert.ok(res)
+    assert.equal(res.parse_errors, [])
+})
+
 parser.run();
